@@ -18,17 +18,14 @@ def wrap_content_stream(content: typing.Union[str, bytes, typedef.StreamLike]):
     if isinstance(content, str):
         content = encode_string(content)
 
-    return (
-        typedef.MockStream(content) if isinstance(content, bytes) else content
-    )
+    return typedef.MockStream(content) if isinstance(content, bytes) else content
 
 
 def build_raw_headers(headers: typing.Mapping[str, str]):
     """Convert a dict of headers to a tuple of tuples.
     Mimics the format of ClientResponse."""
     return tuple(
-        (encode_string(key), encode_string(value))
-        for key, value in headers.items()
+        (encode_string(key), encode_string(value)) for key, value in headers.items()
     )
 
 

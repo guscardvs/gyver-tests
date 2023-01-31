@@ -3,7 +3,8 @@ from http import HTTPStatus
 
 import aiohttp
 import typing_extensions
-from .typedef import StreamLike, FrozenURL, ResponseInRegistry
+
+from .typedef import FrozenURL, ResponseInRegistry, StreamLike
 
 METHODS = typing.Literal[
     "GET",
@@ -40,7 +41,7 @@ class Mocker:
         ]
     ]
     registry: RegistryDict
-    
+
     def register_uri(
         self,
         method: METHODS,
@@ -88,8 +89,6 @@ class Mocker:
         self,
         func: typing.Callable[P, typing.Coroutine[typing.Any, typing.Any, T]],
     ) -> typing.Callable[P, typing.Coroutine[typing.Any, typing.Any, T]]: ...
-    def decorate(
-        self, func: typing.Callable[P, T]
-    ) -> typing.Callable[P, T]: ...
+    def decorate(self, func: typing.Callable[P, T]) -> typing.Callable[P, T]: ...
 
 http_mocker: Mocker

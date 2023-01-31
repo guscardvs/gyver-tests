@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import yarl
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.streams import StreamReader
+
 from gyver.url import URL, Query
 
 

@@ -42,7 +42,8 @@ def test_register_json_uri():
 
     http_mocker.register_json_uri("GET", url, body=desired_response)
     options = http_mocker.registry[("GET", "http://example.com/")]
-    assert json.loads(options["body"].decode("utf-8")) == desired_response
+    assert isinstance(options, dict)
+    assert json.loads(options.get("body").decode("utf-8")) == desired_response
 
 
 async def test_param_handling():
@@ -72,9 +73,7 @@ async def test_params():
 
 
 async def test_str_response_encoding():
-    http_mocker.register_uri(
-        "GET", "http://example.com/", body="example résumé data"
-    )
+    http_mocker.register_uri("GET", "http://example.com/", body="example résumé data")
     response = await http_mocker.fake_request("GET", "http://example.com/")
     data = await response.read()
     assert data == "example résumé data".encode("utf-8")
@@ -122,9 +121,7 @@ async def test_has_call():
     assert not http_mocker.has_call(
         method="POST", uri="http://example.com/?alpha=1&beta="
     )
-    assert not http_mocker.has_call(
-        method="GET", uri="http://otherexample.com/"
-    )
+    assert not http_mocker.has_call(method="GET", uri="http://otherexample.com/")
 
 
 def test_activate():  # sourcery skip: extract-duplicate-method
@@ -239,18 +236,14 @@ async def test_passed_data_is_read():
     stream = DummyAsyncStream(b"meow")
     assert not stream.at_eof()
 
-    resp = await http_mocker.fake_request(
-        "GET", "http://example.com/", data=stream
-    )
+    resp = await http_mocker.fake_request("GET", "http://example.com/", data=stream)
 
     assert stream.at_eof()
     assert await resp.read() == b"woof"
 
 
 async def test_aiohttp_request():
-    http_mocker.register_uri(
-        "GET", "http://example.com/", body=b"example data"
-    )
+    http_mocker.register_uri("GET", "http://example.com/", body=b"example data")
 
     http_mocker.activate()
     async with ClientSession() as session:

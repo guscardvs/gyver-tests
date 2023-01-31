@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import json
 import typing
 from contextlib import contextmanager
 from functools import wraps
@@ -11,6 +10,8 @@ from aiohttp import ClientSession
 from aiohttp.client import ClientResponse
 from aiohttp.helpers import TimerNoop
 from multidict import CIMultiDict, CIMultiDictProxy
+
+from gyver.utils import json
 
 from . import exc, helpers, typedef
 
@@ -37,9 +38,7 @@ class Mocker:
         ] = {}
         self.request = None
 
-    async def fake_request(
-        self, method: METHODS, uri: str, **kwargs: typing.Any
-    ):
+    async def fake_request(self, method: METHODS, uri: str, **kwargs: typing.Any):
 
         response = self._find_request(method, uri, kwargs)
 
@@ -62,9 +61,7 @@ class Mocker:
         self.calls.append(
             {
                 "method": method,
-                "uri": typedef.FrozenURL(
-                    uri, params=kwargs.pop("params", None)
-                ),
+                "uri": typedef.FrozenURL(uri, params=kwargs.pop("params", None)),
                 **kwargs,
             }
         )
@@ -90,9 +87,7 @@ class Mocker:
             try:
                 response = response.pop(0)
             except IndexError as error:
-                raise exc.ExhaustedAllResponses(
-                    "No responses left."
-                ) from error
+                raise exc.ExhaustedAllResponses("No responses left.") from error
 
         return response
 
@@ -121,9 +116,7 @@ class Mocker:
             session=Mock(),
         )
 
-        content = helpers.wrap_content_stream(
-            response.get("body", "gyver-mock")
-        )
+        content = helpers.wrap_content_stream(response.get("body", "gyver-mock"))
         mock_response.content = content  # type: ignore
 
         # Build response headers manually
@@ -146,9 +139,7 @@ class Mocker:
     def _validate_body(self, options: typing.Mapping[str, typing.Any]):
         """Validate body type to prevent unexpected behavior"""
         if body := options.get("body"):
-            if not isinstance(
-                body, (str, bytes)
-            ) and not helpers.is_stream_like(body):
+            if not isinstance(body, (str, bytes)) and not helpers.is_stream_like(body):
                 raise exc.InvalidBody(body)
         if responses := options.get("responses"):
             for response in responses:
@@ -157,8 +148,7 @@ class Mocker:
     def register_uri(self, method: METHODS, uri: str, **options: typing.Any):
         if any(x.get("params") for x in options.get("responses", [])):
             raise exc.InvalidResponses(
-                "Cannot specify params in responses, "
-                "call register multiple times."
+                "Cannot specify params in responses, " "call register multiple times."
             )
         self._validate_body(options)
         url = typedef.FrozenURL(uri, params=options.pop("params", {}))
@@ -209,9 +199,7 @@ class Mocker:
         match up.  Setting ``check_params`` to `False` will strip params from
         the *called* uri, not
         the passed-in uri."""
-        kwargs["uri"] = typedef.FrozenURL(
-            uri, params=kwargs.pop("params", None)
-        )
+        kwargs["uri"] = typedef.FrozenURL(uri, params=kwargs.pop("params", None))
         for call in self.calls:
             if not check_params:
                 call = copy.deepcopy(call)
