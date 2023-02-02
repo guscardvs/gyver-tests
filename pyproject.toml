@@ -1,10 +1,10 @@
 [tool.poetry]
 name = "gyver-tests"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["Gustavo Correa <self.gustavocorrea@gmail.com>"]
 readme = "README.md"
-packages = [{ include = "gyver/tests/**" }]
+packages = [{ include = "gyver/tests" }]
 
 [tool.poetry.dependencies]
 python = "^3.9"
