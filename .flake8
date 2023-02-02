@@ -1,2 +1,5 @@
 [flake8]
 exclude = *.pyi
+per-file-ignores =
+    tests/test_config.py:E731
+max-line-length=88

@@ -43,7 +43,7 @@ def test_register_json_uri():
     http_mocker.register_json_uri("GET", url, body=desired_response)
     options = http_mocker.registry[("GET", "http://example.com/")]
     assert isinstance(options, dict)
-    assert json.loads(options.get("body").decode("utf-8")) == desired_response
+    assert json.loads(options.get("body", "").decode("utf-8")) == desired_response
 
 
 async def test_param_handling():
@@ -73,7 +73,11 @@ async def test_params():
 
 
 async def test_str_response_encoding():
-    http_mocker.register_uri("GET", "http://example.com/", body="example résumé data")
+    http_mocker.register_uri(
+        "GET",
+        "http://example.com/",
+        body="example résumé data",
+    )
     response = await http_mocker.fake_request("GET", "http://example.com/")
     data = await response.read()
     assert data == "example résumé data".encode("utf-8")

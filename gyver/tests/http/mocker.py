@@ -30,16 +30,48 @@ AsyncCallableT = typing.TypeVar(
 CallableT = typing.TypeVar("CallableT", bound=typing.Callable)
 
 
-class Mocker:
+class HttpMocker:
+    """A class to fake HTTP requests,
+    allowing the setting of custom HTTP responses.
+
+    This class makes it easier to create test
+    cases where specific HTTP responses
+    are required. The class instance stores a registry of HTTP requests
+    with their corresponding responses. When the fake_request() method is
+    called, the registry is searched for a match to the specified HTTP
+    method and URI. If a match is found, the corresponding response is
+    returned. If no match is found, an error is raised.
+    The instance also keeps a record of all calls to fake_request().
+    """
+
     def __init__(self):
+        """Create an instance of HttpMocker."""
         self.calls: typing.List[typing.MutableMapping[str, typing.Any]] = []
         self.registry: dict[
             tuple[str, typedef.FrozenURL], typedef.ResponseInRegistry
         ] = {}
         self.request = None
 
-    async def fake_request(self, method: METHODS, uri: str, **kwargs: typing.Any):
+    async def fake_request(
+        self, method: METHODS, uri: str, **kwargs: typing.Any
+    ):
+        """Return the response for the specified HTTP method and URI.
 
+        If a match for the specified method and URI is found in the registry,
+        the corresponding response is returned. If no match is found,
+        an error is raised.
+
+        :param method: The HTTP method to be matched (e.g. "GET", "POST", etc.).
+        :type method: Literal["GET", "POST", "PUT",
+        "PATCH", "HEAD", "OPTIONS", "DELETE"]
+        :param uri: The URI to be matched.
+        :type uri: str
+        :param kwargs: Additional request options.
+        :return: The corresponding response, if a match is found.
+        :rtype: ClientResponse
+        :raises NoUrlMatching: If no match is found for the specified method and URI.
+        :raises ExhaustedAllResponses: If no responses are left in the registry.
+        """
         response = self._find_request(method, uri, kwargs)
 
         await self.process_request(**kwargs)
@@ -52,16 +84,30 @@ class Mocker:
         return self._build_response(method, uri, response)
 
     async def process_request(self, **kwargs):
-        """Process request options as if the request was actually executed."""
+        """Process request options as if the request was actually executed.
+
+        :param kwargs: Additional request options.
+        """
         data = kwargs.get("data")
         if isinstance(data, asyncio.StreamReader):
             await data.read()
 
     def make_call(self, *, method: METHODS, uri: str, **kwargs):
+        """Record the call to fake_request().
+
+        :param method: The HTTP method of the request.
+        :type method: Literal["GET", "POST", "PUT", "PATCH",
+        "HEAD", "OPTIONS", "DELETE"]
+        :param uri: The URI of the request.
+        :type uri: str
+        :param kwargs: Additional request options.
+        """
         self.calls.append(
             {
                 "method": method,
-                "uri": typedef.FrozenURL(uri, params=kwargs.pop("params", None)),
+                "uri": typedef.FrozenURL(
+                    uri, params=kwargs.pop("params", None)
+                ),
                 **kwargs,
             }
         )
@@ -87,7 +133,9 @@ class Mocker:
             try:
                 response = response.pop(0)
             except IndexError as error:
-                raise exc.ExhaustedAllResponses("No responses left.") from error
+                raise exc.ExhaustedAllResponses(
+                    "No responses left."
+                ) from error
 
         return response
 
@@ -116,7 +164,9 @@ class Mocker:
             session=Mock(),
         )
 
-        content = helpers.wrap_content_stream(response.get("body", "gyver-mock"))
+        content = helpers.wrap_content_stream(
+            response.get("body", "gyver-mock")
+        )
         mock_response.content = content  # type: ignore
 
         # Build response headers manually
@@ -139,16 +189,45 @@ class Mocker:
     def _validate_body(self, options: typing.Mapping[str, typing.Any]):
         """Validate body type to prevent unexpected behavior"""
         if body := options.get("body"):
-            if not isinstance(body, (str, bytes)) and not helpers.is_stream_like(body):
+            if not isinstance(
+                body, (str, bytes)
+            ) and not helpers.is_stream_like(body):
                 raise exc.InvalidBody(body)
         if responses := options.get("responses"):
             for response in responses:
                 self._validate_body(response)
 
     def register_uri(self, method: METHODS, uri: str, **options: typing.Any):
+        """
+        Register a URL to be mocked.
+
+        :param method: The HTTP method for the request (e.g. GET, POST, etc.)
+        :type method: Literal["GET", "POST", "PUT", "PATCH",
+        "HEAD", "OPTIONS", "DELETE"]
+
+        :param uri: The URL to be mocked
+        :type uri: str
+
+        :param options: Additional options to customize the mocked response
+        :type options: dict
+
+        :raises: :exc:`exc.InvalidResponses` If "params" is specified in "responses"
+
+        :Example:
+        >>> mocker = HttpMocker()
+        >>> mocker.register_uri(
+            "GET", "https://example.com", body="example")
+        >>> mocker.activate()
+        >>> async with aiohttp.ClientSession() as client:
+        >>>     async with client.get("https://example.com") as response:
+        >>>         await response.text()
+        "example"
+
+        """
         if any(x.get("params") for x in options.get("responses", [])):
             raise exc.InvalidResponses(
-                "Cannot specify params in responses, " "call register multiple times."
+                "Cannot specify params in responses, "
+                "call register multiple times."
             )
         self._validate_body(options)
         url = typedef.FrozenURL(uri, params=options.pop("params", {}))
@@ -199,7 +278,9 @@ class Mocker:
         match up.  Setting ``check_params`` to `False` will strip params from
         the *called* uri, not
         the passed-in uri."""
-        kwargs["uri"] = typedef.FrozenURL(uri, params=kwargs.pop("params", None))
+        kwargs["uri"] = typedef.FrozenURL(
+            uri, params=kwargs.pop("params", None)
+        )
         for call in self.calls:
             if not check_params:
                 call = copy.deepcopy(call)
@@ -228,4 +309,4 @@ class Mocker:
         return self.open()(func)  # type: ignore
 
 
-http_mocker = Mocker()
+http_mocker = HttpMocker()

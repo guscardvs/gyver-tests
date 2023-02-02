@@ -10,6 +10,7 @@ packages = [{ include = "gyver/tests/**" }]
 python = "^3.9"
 gyver = "^0.23.0"
 pytest = "^7.2.1"
+faker = "^16.6.1"
 
 
 [tool.poetry.group.http.dependencies]
