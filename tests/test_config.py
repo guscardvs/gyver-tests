@@ -1,7 +1,8 @@
 import pytest
-from gyver.tests.config.registry import config_map
-from gyver.tests.config.mocker import ConfigMocker
+
 from gyver.config.provider import ProviderConfig
+from gyver.tests.config.mocker import ConfigMocker
+from gyver.tests.config.registry import config_map
 
 
 class MockConfig(ProviderConfig):
@@ -89,4 +90,4 @@ def test_getitem():
 
 
 def test_setitem():
-    mocker = ConfigMocker()
+    ConfigMocker()

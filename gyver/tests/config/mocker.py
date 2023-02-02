@@ -1,7 +1,9 @@
 from contextlib import contextmanager
 from typing import Any, Callable, Sequence
+
+from gyver.config.provider import ConfigLoader, ProviderConfig, ProviderT
+
 from .registry import config_map
-from gyver.config.provider import ProviderT, ProviderConfig
 
 
 class ConfigMocker:
@@ -38,9 +40,7 @@ class ConfigMocker:
         to_resolve = self.factories
         if only:
             to_resolve = {
-                key: value
-                for key, value in self.factories.items()
-                if key in only
+                key: value for key, value in self.factories.items() if key in only
             }
         if not set(self.factories).difference(self._resolved):
             return
@@ -55,9 +55,7 @@ class ConfigMocker:
         """
         self._resolved.clear()
 
-    def register(
-        self, config_class: type[ProviderT], factory: Callable[[], ProviderT]
-    ):
+    def register(self, config_class: type[ProviderT], factory: Callable[[], ProviderT]):
         """
         Register a new factory for a config class
         :param config_class: the config class to register the factory for
@@ -95,14 +93,25 @@ class ConfigMocker:
         :yields: No value is returned.
         """
         self.resolve_all(only)
-        classmethods_map = {
-            key: (key.__new__, key.__init__) for key in self._resolved
-        }
+        classmethods_map = {key: (key.__new__, key.__init__) for key in self._resolved}
         custom_init = make_custom_method(None)
         for config_class, instance in self._resolved.items():
             config_class.__new__ = make_custom_method(instance)
             config_class.__init__ = custom_init
+
+        get = self.get
+
+        def _mocked_load(
+            self: ConfigLoader,
+            model_cls: type[ProviderConfig],
+            **presets: Any,
+        ):
+            del self, presets
+            return get(model_cls)
+
+        original_load, ConfigLoader.load = ConfigLoader.load, _mocked_load
         yield
+        ConfigLoader.load = original_load
         for config_class, (new, init) in classmethods_map.items():
             config_class.__new__ = new
             config_class.__init__ = init
