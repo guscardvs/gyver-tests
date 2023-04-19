@@ -1,9 +1,11 @@
 from contextlib import contextmanager
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Mapping, Optional, Sequence, TypeVar
 
-from gyver.config.provider import ConfigLoader, ProviderConfig, ProviderT
+from gyver.config import AdapterConfigFactory
 
 from .registry import config_map
+
+T = TypeVar("T")
 
 
 class ConfigMocker:
@@ -14,24 +16,24 @@ class ConfigMocker:
 
     def __init__(
         self,
-        *custom_factories: tuple[type[ProviderT], Callable[[], ProviderT]],
+        *custom_factories: tuple[type[T], Callable[[], T]],
     ) -> None:
         """
         :param custom_factories: a list of custom factories, that will override
                                 existing factories with the same config class
         """
-        self.factories: dict[
-            type[ProviderConfig], Callable[[], ProviderConfig]
-        ] = config_map | dict(custom_factories)
-        self._resolved: dict[type[ProviderConfig], ProviderConfig] = {}
+        self.factories: dict[type, Callable[[], Any]] = config_map | dict(
+            custom_factories
+        )
+        self._resolved: dict[type, Any] = {}
 
-    def resolve(self, config_class: type[ProviderConfig]) -> None:
+    def resolve(self, config_class: type) -> None:
         """
         Resolve an instance of a config class using its registered factory
         """
         self._resolved[config_class] = self.factories[config_class]()
 
-    def resolve_all(self, only: Sequence[type[ProviderConfig]] = ()):
+    def resolve_all(self, only: Sequence[type] = ()):
         """
         Resolve all config classes, or the classes
         passed as the `only` argument
@@ -55,7 +57,7 @@ class ConfigMocker:
         """
         self._resolved.clear()
 
-    def register(self, config_class: type[ProviderT], factory: Callable[[], ProviderT]):
+    def register(self, config_class: type[T], factory: Callable[[], T]):
         """
         Register a new factory for a config class
         :param config_class: the config class to register the factory for
@@ -63,7 +65,7 @@ class ConfigMocker:
         """
         self.factories[config_class] = factory
 
-    def get(self, config_class: type[ProviderT]) -> ProviderT:
+    def get(self, config_class: type[T]) -> T:
         """
         Get an instance of the config class, resolving it if necessary
         :param config_class: the config class to get the instance of
@@ -78,7 +80,7 @@ class ConfigMocker:
             return self._resolved[config_class]  # type: ignore
 
     @contextmanager
-    def mock(self, only: Sequence[type[ProviderConfig]] = ()):
+    def mock(self, only: Sequence[type] = ()):
         """A context manager to mock the specified configurations
 
         This context manager mocks the specified configuration classes,
@@ -102,29 +104,33 @@ class ConfigMocker:
         get = self.get
 
         def _mocked_load(
-            self: ConfigLoader,
-            model_cls: type[ProviderConfig],
-            **presets: Any,
+            self,
+            model_cls: type,
+            __prefix__: str = "",
+            *,
+            presets: Optional[Mapping[str, Any]] = None,
+            **defaults: Any,
         ):
-            del self, presets
+            del self, presets, defaults
             return get(model_cls)
 
-        original_load, ConfigLoader.load = ConfigLoader.load, _mocked_load
+        original_load, AdapterConfigFactory.load = (
+            AdapterConfigFactory.load,
+            _mocked_load,
+        )
         yield
-        ConfigLoader.load = original_load
+        AdapterConfigFactory.load = original_load
         for config_class, (new, init) in classmethods_map.items():
             config_class.__new__ = new
             config_class.__init__ = init
 
-    def __getitem__(self, config_class: type[ProviderT]) -> ProviderT:
+    def __getitem__(self, config_class: type[T]) -> T:
         try:
             return self.get(config_class)
         except ValueError as e:
             raise KeyError(f"{config_class.__name__} not found") from e
 
-    def __setitem__(
-        self, config_class: type[ProviderT], factory: Callable[[], ProviderT]
-    ):
+    def __setitem__(self, config_class: type[T], factory: Callable[[], T]):
         self.register(config_class, factory)
 
 

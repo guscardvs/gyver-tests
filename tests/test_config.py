@@ -1,11 +1,12 @@
 import pytest
+from gyver.config import AdapterConfigFactory, as_config
 
-from gyver.config.provider import ProviderConfig
 from gyver.tests.config.mocker import ConfigMocker
 from gyver.tests.config.registry import config_map
 
 
-class MockConfig(ProviderConfig):
+@as_config
+class MockConfig:
     prefix: str
 
 
@@ -79,8 +80,7 @@ def test_getitem():
     with pytest.raises(KeyError, match="MockConfig not found"):
         try:
             mocker[config_class]
-        except Exception as e:
-            print(e)
+        except Exception:
             raise
 
     factory = lambda: MockConfig(prefix="custom")
@@ -90,4 +90,24 @@ def test_getitem():
 
 
 def test_setitem():
-    ConfigMocker()
+    mocker = ConfigMocker()
+    config_class = MockConfig
+    factory = lambda: MockConfig(prefix="custom")
+    mocker[config_class] = factory
+
+    assert mocker.factories[config_class] is factory
+
+
+def test_mock_context_manager():
+    mocker = ConfigMocker()
+    config_class = MockConfig
+    expected = MockConfig(prefix="custom")
+    factory = lambda: expected
+    mocker.register(config_class, factory)
+    adapter_factory = AdapterConfigFactory()
+
+    mock_factory = adapter_factory.maker(config_class)
+
+    with mocker.mock():
+        assert mock_factory() is expected
+        assert adapter_factory.load(config_class) is expected

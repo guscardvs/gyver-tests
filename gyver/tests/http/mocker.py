@@ -9,9 +9,8 @@ from unittest.mock import Mock
 from aiohttp import ClientSession
 from aiohttp.client import ClientResponse
 from aiohttp.helpers import TimerNoop
-from multidict import CIMultiDict, CIMultiDictProxy
-
 from gyver.utils import json
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import exc, helpers, typedef
 

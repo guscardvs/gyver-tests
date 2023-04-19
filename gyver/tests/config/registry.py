@@ -1,12 +1,10 @@
 import contextlib
-from typing import Callable, Mapping, MutableMapping
+from typing import Any, Callable, Mapping, MutableMapping
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-
-from gyver.config.provider import ProviderConfig
 from gyver.crypto.config import CryptoConfig
 from gyver.crypto.rsa import RSACryptoConfig
 
@@ -33,23 +31,18 @@ def default_rsa_config():
     )
 
 
-_config_map: MutableMapping[type[ProviderConfig], Callable[[], ProviderConfig]] = {
+_config_map: MutableMapping[type, Callable[[], Any]] = {
     CryptoConfig: default_crypto_config,
     RSACryptoConfig: default_rsa_config,
 }
 
 with contextlib.suppress(ImportError):
-    from gyver.boto.storage import StorageConfig
     from gyver.database import DatabaseConfig
     from gyver.database.typedef import Driver
 
     def default_database_config():
         return DatabaseConfig(driver=Driver.SQLITE, host="/:memory")
 
-    def default_storage_config():
-        return StorageConfig(bucket_name="test")
-
     _config_map[DatabaseConfig] = default_database_config
-    _config_map[StorageConfig] = default_storage_config
 
-config_map: Mapping[type[ProviderConfig], Callable[[], ProviderConfig]] = _config_map
+config_map: Mapping[type, Callable[[], Any]] = _config_map
