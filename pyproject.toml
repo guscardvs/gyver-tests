@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gyver-tests"
-version = "0.2.2"
+version = "1.0.0"
 description = ""
 authors = ["Gustavo Correa <self.gustavocorrea@gmail.com>"]
 readme = "README.md"
