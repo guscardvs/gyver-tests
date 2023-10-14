@@ -42,7 +42,9 @@ class ConfigMocker:
         to_resolve = self.factories
         if only:
             to_resolve = {
-                key: value for key, value in self.factories.items() if key in only
+                key: value
+                for key, value in self.factories.items()
+                if key in only
             }
         if not set(self.factories).difference(self._resolved):
             return
@@ -95,7 +97,9 @@ class ConfigMocker:
         :yields: No value is returned.
         """
         self.resolve_all(only)
-        classmethods_map = {key: (key.__new__, key.__init__) for key in self._resolved}
+        classmethods_map = {
+            key: (key.__new__, key.__init__) for key in self._resolved
+        }
         custom_init = make_custom_method(None)
         for config_class, instance in self._resolved.items():
             config_class.__new__ = make_custom_method(instance)
@@ -107,6 +111,7 @@ class ConfigMocker:
             self,
             model_cls: type,
             __prefix__: str = "",
+            __sep__: str = "__",
             *,
             presets: Optional[Mapping[str, Any]] = None,
             **defaults: Any,
